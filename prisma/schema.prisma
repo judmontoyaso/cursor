@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  email         String?       @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  transactions  Transaction[] @relation("UserTransactions")
+  categories    Category[]    @relation("UserCategories")
+  budgets       Budget[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  amount      Float
+  description String
+  date        DateTime @default(now())
+  categoryId  String
+  userId      String
+  type        String // Asegúrate de que este campo esté definido
+  category    Category @relation("TransactionCategory", fields: [categoryId], references: [id])
+  user        User     @relation("UserTransactions", fields: [userId], references: [id])
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String
+  icon         String
+  type         String // 'INCOME' o 'EXPENSE'
+  color        String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[] @relation("TransactionCategory")
+  budgets      Budget[]
+  users        User[]        @relation("UserCategories")
+  userId       String?
+}
+
+model Budget {
+  id          String    @id @default(cuid())
+  name        String    // Cambiamos de title a name
+  amount      Float
+  spent       Float     @default(0)
+  type        String    // 'expense' o 'saving'
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  period      String    @default("monthly")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
