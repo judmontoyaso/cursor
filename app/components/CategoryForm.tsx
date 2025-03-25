@@ -4,24 +4,28 @@ import { useState } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { Button } from 'primereact/button'
 import { Dropdown } from 'primereact/dropdown'
+import { ColorPicker } from 'primereact/colorpicker'
 import IconSelector from './IconSelector'
 
+interface CategoryFormData {
+  name: string
+  type: 'INGRESO' | 'GASTO'
+  color: string
+  icon: string
+}
+
 interface CategoryFormProps {
-  onSubmit: (category: any) => void
-  initialData?: any
+  onSubmit: (data: CategoryFormData) => void
+  initialData?: CategoryFormData
 }
 
 export default function CategoryForm({ onSubmit, initialData }: CategoryFormProps) {
-  const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    icon: initialData?.icon || 'pi pi-tag',
-    type: initialData?.type || 'expense'
+  const [formData, setFormData] = useState<CategoryFormData>(initialData || {
+    name: '',
+    type: 'GASTO',
+    color: '#000000',
+    icon: 'pi pi-wallet'
   })
-
-  const typeOptions = [
-    { label: 'Gasto', value: 'expense' },
-    { label: 'Ingreso', value: 'income' }
-  ]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,6 +48,33 @@ export default function CategoryForm({ onSubmit, initialData }: CategoryFormProp
       </div>
 
       <div className="flex flex-col space-y-2">
+        <label htmlFor="type" className="font-medium">
+          Tipo
+        </label>
+        <Dropdown
+          id="type"
+          value={formData.type}
+          options={[
+            { label: 'Gasto', value: 'GASTO' },
+            { label: 'Ingreso', value: 'INGRESO' }
+          ]}
+          onChange={(e) => setFormData({ ...formData, type: e.value })}
+          placeholder="Selecciona un tipo"
+          className="w-full"
+        />
+      </div>
+
+      <div className="flex flex-col space-y-2">
+        <label htmlFor="color" className="font-medium">
+          Color
+        </label>
+        <ColorPicker
+          value={formData.color}
+          onChange={(e) => setFormData({ ...formData, color: e.value })}
+        />
+      </div>
+
+      <div className="flex flex-col space-y-2">
         <label className="font-medium">Icono</label>
         <div className="flex items-center space-x-2">
           <IconSelector
@@ -54,20 +85,6 @@ export default function CategoryForm({ onSubmit, initialData }: CategoryFormProp
             Icono seleccionado: <i className={formData.icon}></i>
           </span>
         </div>
-      </div>
-
-      <div className="flex flex-col space-y-2">
-        <label htmlFor="type" className="font-medium">
-          Tipo
-        </label>
-        <Dropdown
-          id="type"
-          value={formData.type}
-          options={typeOptions}
-          onChange={(e) => setFormData({ ...formData, type: e.value })}
-          placeholder="Selecciona un tipo"
-          className="w-full"
-        />
       </div>
 
       <Button

@@ -16,17 +16,16 @@ import {
     ResponsiveContainer, Cell 
 } from 'recharts'
 import { ProgressBar } from 'primereact/progressbar'
+import { Chart } from 'primereact/chart'
 
 interface Transaction {
     id: string;
     amount: number;
-    type: 'income' | 'expense';
     date: string;
-    description: string;
+    type: 'INGRESO' | 'GASTO';
+    categoryId: string;
     category: {
-        id: string;
         name: string;
-        icon: string;
         color: string;
     };
 }
@@ -70,6 +69,17 @@ interface BalanceData {
     gastos: number;
 }
 
+interface ChartData {
+    labels: string[];
+    datasets: {
+        label: string;
+        data: number[];
+        backgroundColor: string[];
+        borderColor: string[];
+        borderWidth: number;
+    }[];
+}
+
 const getDateRangeWithHours = (start: Date, end: Date): [Date, Date] => {
     const startDate = new Date(start);
     const endDate = new Date(end);
@@ -106,10 +116,15 @@ export default function ReportsPage() {
         selectedMonth: new Date()
     })
     const op = useRef<OverlayPanel>(null)
+    const [transactions, setTransactions] = useState<Transaction[]>([])
+    const [chartData, setChartData] = useState<ChartData>({
+        labels: [],
+        datasets: []
+    })
 
     const calculateTotals = (transactions: Transaction[]) => {
         return transactions.reduce((acc, t) => {
-            if (t.type === 'income') {
+            if (t.type === 'INGRESO') {
                 acc.income += t.amount;
             } else {
                 acc.expense += Math.abs(t.amount);
@@ -137,6 +152,7 @@ export default function ReportsPage() {
 
                 setReportData(reportsData)
                 setCategories(categoriesData)
+                fetchTransactions()
             } catch (error) {
                 console.error('Error fetching data:', error)
                 setError(error instanceof Error ? error.message : 'Error desconocido')
@@ -147,6 +163,45 @@ export default function ReportsPage() {
 
         fetchData()
     }, [])
+
+    const fetchTransactions = async () => {
+        try {
+            const response = await fetch('/api/transactions');
+            if (!response.ok) {
+                throw new Error('Error al obtener las transacciones');
+            }
+            const data = await response.json();
+            setTransactions(data);
+            updateChartData(data);
+        } catch (err) {
+            console.error('Error:', err);
+        }
+    };
+
+    const updateChartData = (transactions: Transaction[]) => {
+        const categoryTotals = transactions.reduce((acc, transaction) => {
+            const { category, amount, type } = transaction;
+            if (!acc[category.name]) {
+                acc[category.name] = {
+                    total: 0,
+                    color: category.color
+                };
+            }
+            acc[category.name].total += type === 'GASTO' ? Math.abs(amount) : amount;
+            return acc;
+        }, {} as Record<string, { total: number; color: string }>);
+
+        setChartData({
+            labels: Object.keys(categoryTotals),
+            datasets: [{
+                label: 'Total por Categoría',
+                data: Object.values(categoryTotals).map(v => v.total),
+                backgroundColor: Object.values(categoryTotals).map(v => v.color),
+                borderColor: Object.values(categoryTotals).map(v => v.color),
+                borderWidth: 1
+            }]
+        });
+    };
 
     const filteredData = useMemo(() => {
         if (!reportData) return null;
@@ -174,7 +229,7 @@ export default function ReportsPage() {
 
         // Calcular gastos por categoría
         const gastosPorCategoria = filteredTransactions
-            .filter(t => t.type === 'expense')
+            .filter(t => t.type === 'GASTO')
             .reduce((acc, t) => {
                 acc[t.category.name] = (acc[t.category.name] || 0) + Math.abs(t.amount);
                 return acc;
@@ -182,7 +237,7 @@ export default function ReportsPage() {
 
         // Calcular ingresos por categoría
         const ingresosPorCategoria = filteredTransactions
-            .filter(t => t.type === 'income')
+            .filter(t => t.type === 'INGRESO')
             .reduce((acc, t) => {
                 acc[t.category.name] = (acc[t.category.name] || 0) + t.amount;
                 return acc;
@@ -240,7 +295,7 @@ export default function ReportsPage() {
 
         // Agrupar transacciones por mes y calcular gastos
         const gastosPorMes = filteredData.ultimasTransacciones
-            .filter(t => t.type === 'expense')
+            .filter(t => t.type === 'GASTO')
             .reduce((acc, transaction) => {
                 const fecha = new Date(transaction.date);
                 const mes = fecha.toLocaleDateString('es-ES', { 
@@ -324,7 +379,7 @@ export default function ReportsPage() {
                     total: 0
                 };
             }
-            acc[categoryId].total += transaction.type === 'expense' ? Math.abs(transaction.amount) : transaction.amount;
+            acc[categoryId].total += transaction.type === 'GASTO' ? Math.abs(transaction.amount) : transaction.amount;
             return acc;
         }, {} as Record<string, { name: string; icon: string; color: string; total: number }>);
 
@@ -801,11 +856,11 @@ export default function ReportsPage() {
                                 header="Tipo" 
                                 body={(rowData) => (
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                        rowData.type === 'income' 
+                                        rowData.type === 'INGRESO' 
                                             ? 'bg-green-100 text-green-800' 
                                             : 'bg-red-100 text-red-800'
                                     }`}>
-                                        {rowData.type === 'income' ? 'Ingreso' : 'Gasto'}
+                                        {rowData.type === 'INGRESO' ? 'Ingreso' : 'Gasto'}
                                     </span>
                                 )}
                             />
@@ -814,7 +869,7 @@ export default function ReportsPage() {
                                 header="Monto" 
                                 body={(rowData) => (
                                     <span className={`font-semibold ${
-                                        rowData.type === 'expense' ? 'text-red-600' : 'text-green-600'
+                                        rowData.type === 'GASTO' ? 'text-red-600' : 'text-green-600'
                                     }`}>
                                         {formatCurrency(rowData.amount)}
                                     </span>
@@ -825,6 +880,11 @@ export default function ReportsPage() {
                     </Card>
                 </TabPanel>
             </TabView>
+
+            <Card className="mt-6 mb-4">
+                <h2 className="text-xl font-semibold mb-4">Distribución por Categorías</h2>
+                <Chart type="pie" data={chartData} />
+            </Card>
         </div>
     )
 } 

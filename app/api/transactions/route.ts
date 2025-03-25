@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '@/lib/db'
 import { Session } from "next-auth";
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { NextRequest } from 'next/server'
 
 export async function GET() {

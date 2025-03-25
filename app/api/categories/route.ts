@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { getCategories, createCategory, deleteCategory } from '@/lib/db'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 
 interface Category {
   name: string;
@@ -11,68 +11,24 @@ interface Category {
   type: string;
 }
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const id = url.pathname.split('/').pop();
-
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    if (id && id !== 'categories') {
-      // Obtener una categoría específica por ID
-      const category = await prisma.category.findUnique({
-        where: { id },
-      });
-
-      if (!category) {
-        return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 404 });
-      }
-
-      return NextResponse.json(category);
-    } else {
-      // Obtener todas las categorías
-      const categories = await getCategories(session.user.id);
-      return NextResponse.json(categories);
-    }
+    const categories = await prisma.category.findMany();
+    return NextResponse.json(categories);
   } catch (error) {
-    console.error('Error al obtener categorías:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener las categorías' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error al obtener las categorías' }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const category = await request.json();
-
-    if (!category.name || !category.color || !category.icon || !category.type) {
-      return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
-    }
-
-    const createdCategory = await prisma.category.create({
-      data: {
-        ...category,
-        userId: session.user.id,
-      },
+    const data = await req.json();
+    const category = await prisma.category.create({
+      data
     });
-
-    return NextResponse.json(createdCategory);
+    return NextResponse.json(category);
   } catch (error) {
-    console.error('Error al crear categorías:', error);
-    return NextResponse.json(
-      { error: 'Error al crear categorías' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error al crear la categoría' }, { status: 500 });
   }
 }
 

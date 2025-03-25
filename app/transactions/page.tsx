@@ -12,13 +12,15 @@ import { Toast } from 'primereact/toast'
 import { Calendar } from 'primereact/calendar'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { Card } from 'primereact/card'
+import TransactionForm from '../components/TransactionForm'
 
 interface Transaction {
   id: string
   description: string
   amount: number
   date: string
-  type: 'expense' | 'income'
+  type: 'INGRESO' | 'GASTO'
+  categoryId: string
   category: {
     id: string
     name: string
@@ -40,30 +42,23 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [visible, setVisible] = useState(false)
-  const [formData, setFormData] = useState({
-    description: '',
-    amount: 0,
-    date: new Date(),
-    type: 'expense',
-    categoryId: ''
-  })
+  const [showForm, setShowForm] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const toast = useRef<Toast>(null)
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
   useEffect(() => {
-    loadTransactions()
+    fetchTransactions()
     loadCategories()
   }, [])
 
-  const loadTransactions = async () => {
+  const fetchTransactions = async () => {
     try {
       const response = await fetch('/api/transactions')
-      if (!response.ok) throw new Error('Error al cargar las transacciones')
+      if (!response.ok) throw new Error('Error al obtener las transacciones')
       const data = await response.json()
       setTransactions(data)
-    } catch (error) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Error al cargar las transacciones' })
+    } catch (err) {
+      console.error('Error:', err)
     } finally {
       setLoading(false)
     }
@@ -80,90 +75,60 @@ export default function TransactionsPage() {
     }
   }
 
-  const handleEdit = (transaction: Transaction) => {
-    setEditingTransaction(transaction)
-    setFormData({
-      description: transaction.description,
-      amount: transaction.amount,
-      date: new Date(transaction.date),
-      type: transaction.type,
-      categoryId: transaction.category.id
-    })
-    setVisible(true)
-  }
-
-  const handleSubmit = async () => {
-    if (!formData.description || !formData.categoryId) {
-      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Por favor complete todos los campos' })
-      return
-    }
-
+  const handleSubmit = async (data: Omit<Transaction, 'id'>) => {
     try {
-      const url = `/api/transactions${editingTransaction ? `/${editingTransaction.id}` : ''}`
-      const method = editingTransaction ? 'PUT' : 'POST'
-      
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
       })
 
-      if (!response.ok) throw new Error(`Error al ${editingTransaction ? 'actualizar' : 'crear'} la transacción`)
-      
-      await loadTransactions()
-      setVisible(false)
-      resetForm()
-      toast.current?.show({ 
-        severity: 'success', 
-        summary: 'Éxito', 
-        detail: `Transacción ${editingTransaction ? 'actualizada' : 'creada'} correctamente` 
-      })
-    } catch (error) {
-      toast.current?.show({ 
-        severity: 'error', 
-        summary: 'Error', 
-        detail: `Error al ${editingTransaction ? 'actualizar' : 'crear'} la transacción` 
-      })
+      if (!response.ok) {
+        throw new Error('Error al crear la transacción')
+      }
+
+      const newTransaction = await response.json()
+      setTransactions([...transactions, newTransaction])
+      setShowForm(false)
+    } catch (err) {
+      console.error('Error:', err)
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
       const response = await fetch(`/api/transactions/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
       
       if (!response.ok) throw new Error('Error al eliminar la transacción')
       
-      await loadTransactions()
-      toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Transacción eliminada' })
-    } catch (error) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Error al eliminar la transacción' })
+      setTransactions(transactions.filter(t => t.id !== id))
+    } catch (err) {
+      console.error('Error:', err)
     }
   }
 
-  const resetForm = () => {
-    setFormData({
-      description: '',
-      amount: 0,
-      date: new Date(),
-      type: 'expense',
-      categoryId: ''
-    })
-    setEditingTransaction(null)
+  const amountTemplate = (rowData: Transaction) => {
+    const amount = new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP'
+    }).format(rowData.amount)
+    
+    return <span className={rowData.type === 'INGRESO' ? 'text-green-500' : 'text-red-500'}>
+      {amount}
+    </span>
   }
 
-  const confirmDelete = (id: string) => {
-    confirmDialog({
-      message: '¿Estás seguro de que deseas eliminar esta transacción?',
-      header: 'Confirmar Eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sí, eliminar',
-      rejectLabel: 'No, cancelar',
-      acceptClassName: 'p-button-danger',
-      accept: () => handleDelete(id),
-    })
-  }
+  const actionTemplate = (rowData: Transaction) => (
+    <Button
+      icon="pi pi-trash"
+      className="p-button-danger p-button-text"
+      onClick={() => handleDelete(rowData.id)}
+    />
+  )
 
   const categoryBodyTemplate = (rowData: Transaction) => (
     <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm"
@@ -177,44 +142,18 @@ export default function TransactionsPage() {
     </span>
   )
 
-  const amountBodyTemplate = (rowData: Transaction) => (
-    <span className={`font-semibold ${rowData.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
-      {rowData.type === 'expense' ? '-' : '+'}{formatCurrency(Math.abs(rowData.amount))}
-    </span>
-  )
-
-  const actionBodyTemplate = (rowData: Transaction) => (
-    <div className="flex gap-2 justify-end">
-      <Button 
-        icon="pi pi-pencil" 
-        rounded 
-        text 
-        className="p-button-sm"
-        onClick={() => handleEdit(rowData)}
-      />
-      <Button 
-        icon="pi pi-trash" 
-        rounded 
-        text 
-        severity="danger"
-        className="p-button-sm"
-        onClick={() => confirmDelete(rowData.id)}
-      />
-    </div>
-  )
-
-  const formatCurrency = (amount: number) => {
-    return `$${amount.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  }
-
   return (
     <div className="p-4">
       <Toast ref={toast} />
       <ConfirmDialog />
       
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Transacciones</h1>
-        <Button label="Nueva Transacción" icon="pi pi-plus" onClick={() => setVisible(true)} />
+        <Button
+          label="Nueva Transacción"
+          icon="pi pi-plus"
+          onClick={() => setShowForm(true)}
+        />
       </div>
 
       <DataTable 
@@ -250,115 +189,25 @@ export default function TransactionsPage() {
         <Column 
           field="amount" 
           header="Monto" 
-          body={amountBodyTemplate}
+          body={amountTemplate}
           sortable
         />
         <Column 
-          body={actionBodyTemplate}
+          body={actionTemplate}
           style={{ width: '100px' }}
         />
       </DataTable>
 
       <Dialog 
-        visible={visible} 
-        onHide={() => {
-          setVisible(false)
-          resetForm()
-        }}
-        header={editingTransaction ? 'Editar Transacción' : 'Nueva Transacción'}
-        modal 
-        className="p-fluid"
+        visible={showForm} 
+        onHide={() => setShowForm(false)}
+        header="Nueva Transacción"
       >
-        <div className="grid grid-cols-1 gap-4 mt-4">
-          <div className="field">
-            <label className="font-medium mb-2 block">Tipo</label>
-            <div className="flex gap-2">
-              <Button 
-                label="Gasto" 
-                icon="pi pi-arrow-down" 
-                severity={formData.type === 'expense' ? 'danger' : 'secondary'}
-                outlined={formData.type !== 'expense'}
-                onClick={() => setFormData({ ...formData, type: 'expense', categoryId: '' })}
-              />
-              <Button 
-                label="Ingreso" 
-                icon="pi pi-arrow-up" 
-                severity={formData.type === 'income' ? 'success' : 'secondary'}
-                outlined={formData.type !== 'income'}
-                onClick={() => setFormData({ ...formData, type: 'income', categoryId: '' })}
-              />
-            </div>
-          </div>
-
-          <div className="field">
-            <label className="font-medium mb-2 block">Descripción</label>
-            <InputText
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Ej: Compra de supermercado"
-            />
-          </div>
-
-          <div className="field">
-            <label className="font-medium mb-2 block">Categoría</label>
-            <Dropdown
-              value={formData.categoryId}
-              options={categories.filter(cat => cat.type === formData.type)}
-              onChange={(e) => setFormData({ ...formData, categoryId: e.value })}
-              optionLabel="name"
-              optionValue="id"
-              placeholder="Selecciona una categoría"
-              itemTemplate={(option) => (
-                <div className="flex items-center gap-2">
-                  <i className={`${option.icon} text-sm`} style={{ color: option.color }}></i>
-                  <span>{option.name}</span>
-                </div>
-              )}
-            />
-          </div>
-
-          <div className="field">
-            <label className="font-medium mb-2 block">Monto</label>
-            <InputNumber
-              value={formData.amount}
-              onValueChange={(e) => setFormData({ ...formData, amount: e.value || 0 })}
-              mode="currency"
-              currency="COP"
-              locale="es-CO"
-              minFractionDigits={0}
-              maxFractionDigits={0}
-              className="w-full"
-              required
-            />
-          </div>
-
-          <div className="field">
-            <label className="font-medium mb-2 block">Fecha</label>
-            <Calendar
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.value || new Date() })}
-              showIcon
-              dateFormat="dd/mm/yy"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 mt-6">
-          <Button 
-            label="Cancelar" 
-            icon="pi pi-times" 
-            outlined 
-            onClick={() => {
-              setVisible(false)
-              resetForm()
-            }} 
-          />
-          <Button 
-            label={editingTransaction ? 'Actualizar' : 'Guardar'} 
-            icon="pi pi-check" 
-            onClick={handleSubmit} 
-          />
-        </div>
+        <TransactionForm
+          onSubmit={handleSubmit}
+          onCancel={() => setShowForm(false)}
+          initialData={selectedTransaction}
+        />
       </Dialog>
     </div>
   )
