@@ -19,14 +19,21 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
         }
 
+        // Validar datos requeridos
+        if (!data.name || !data.amount || !data.type || !data.categoryId || !data.startDate) {
+            return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
+        }
+
+        // Crear el presupuesto
         const budget = await prisma.budget.create({
             data: {
                 name: data.name,
                 amount: data.amount,
                 type: data.type,
                 categoryId: data.categoryId,
-                period: data.period || 'monthly',
-                userId: user.id
+                userId: user.id,
+                startDate: new Date(data.startDate),
+                endDate: data.endDate ? new Date(data.endDate) : null
             },
             include: {
                 category: true
@@ -61,45 +68,39 @@ export async function GET() {
                 category: true
             },
             orderBy: {
-                createdAt: 'desc'
+                startDate: 'desc'
             }
         });
 
-        // Obtener todas las transacciones del usuario
-        const transactions = await prisma.transaction.findMany({
-            where: { userId: user.id },
-            select: {
-                amount: true,
-                type: true,
-                categoryId: true,
-                date: true
-            }
-        });
+        const budgetsWithProgress = await Promise.all(budgets.map(async (budget) => {
+            const startDate = new Date(budget.startDate);
+            const endDate = budget.endDate ? new Date(budget.endDate) : new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
 
-        // Calcular el progreso para cada presupuesto
-        const budgetsWithProgress = budgets.map(budget => {
-            // Filtrar transacciones por categoría y tipo
-            const categoryTransactions = transactions.filter(t => 
-                t.categoryId === budget.categoryId && 
-                t.type === budget.type
-            );
+            const transactions = await prisma.transaction.findMany({
+                where: {
+                    userId: user.id,
+                    categoryId: budget.categoryId,
+                    type: budget.type,
+                    date: {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                }
+            });
 
-            // Calcular el total gastado/ingresado
-            const total = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
-
-            // Calcular el progreso
-            const progress = budget.amount > 0 ? (total / budget.amount) * 100 : 0;
+            const spent = transactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+            const progress = (spent / budget.amount) * 100;
 
             return {
                 ...budget,
-                progress,
-                spent: total // Agregamos el total gastado/ingresado
+                spent,
+                progress
             };
-        });
+        }));
 
         return NextResponse.json(budgetsWithProgress);
     } catch (error) {
         console.error('Error:', error);
-        return NextResponse.json({ error: 'Error al obtener los presupuestos' }, { status: 500 });
+        return NextResponse.json({ error: 'Error al obtener presupuestos' }, { status: 500 });
     }
 }

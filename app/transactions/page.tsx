@@ -11,6 +11,7 @@ import { Column } from 'primereact/column'
 import { Toast } from 'primereact/toast'
 import { Calendar } from 'primereact/calendar'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
+import { Card } from 'primereact/card'
 
 interface Transaction {
   id: string
@@ -178,7 +179,7 @@ export default function TransactionsPage() {
 
   const amountBodyTemplate = (rowData: Transaction) => (
     <span className={`font-semibold ${rowData.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
-      {rowData.type === 'expense' ? '-' : '+'}${Math.abs(rowData.amount).toFixed(2)}
+      {rowData.type === 'expense' ? '-' : '+'}{formatCurrency(Math.abs(rowData.amount))}
     </span>
   )
 
@@ -201,6 +202,10 @@ export default function TransactionsPage() {
       />
     </div>
   )
+
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
 
   return (
     <div className="p-4">
@@ -318,8 +323,12 @@ export default function TransactionsPage() {
               value={formData.amount}
               onValueChange={(e) => setFormData({ ...formData, amount: e.value || 0 })}
               mode="currency"
-              currency="USD"
-              locale="es-ES"
+              currency="COP"
+              locale="es-CO"
+              minFractionDigits={0}
+              maxFractionDigits={0}
+              className="w-full"
+              required
             />
           </div>
 

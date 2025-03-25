@@ -77,18 +77,18 @@ model Category {
 }
 
 model Budget {
-  id          String    @id @default(cuid())
-  name        String    // Cambiamos de title a name
+  id          String   @id @default(cuid())
+  name        String
   amount      Float
-  spent       Float     @default(0)
-  type        String    // 'expense' o 'saving'
+  type        String   // 'income' o 'expense'
   categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id])
-  period      String    @default("monthly")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  category    Category @relation(fields: [categoryId], references: [id])
   userId      String
-  user        User      @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 enum TransactionType {
