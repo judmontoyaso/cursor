@@ -21,6 +21,13 @@ interface Category {
   type: string // 'income' o 'expense'
 }
 
+interface CategoryFormData {
+  name: string
+  color: string
+  icon: string
+  type: string
+}
+
 // Lista de íconos disponibles
 const iconOptions = [
   { label: 'Casa', value: 'pi pi-home' },
@@ -96,14 +103,25 @@ export default function CategoriesPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al crear la categoría');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al crear la categoría');
       }
 
       const newCategory = await response.json();
       setCategories([...categories, newCategory]);
-      setVisible(false);
-    } catch (err) {
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Éxito',
+        detail: 'Categoría creada correctamente'
+      });
+      loadCategories();
+    } catch (err: any) {
       console.error('Error:', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: err.message || 'Error al crear la categoría'
+      });
     }
   };
 
@@ -124,8 +142,10 @@ export default function CategoriesPage() {
   };
 
   const handleEdit = async (data: CategoryFormData) => {
+    if (!editingCategory) return;
+    
     try {
-      const response = await fetch(`/api/categories/${selectedCategory?.id}`, {
+      const response = await fetch(`/api/categories/${editingCategory.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -134,16 +154,27 @@ export default function CategoriesPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al actualizar la categoría');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al actualizar la categoría');
       }
 
       const updatedCategory = await response.json();
       setCategories(categories.map(cat => 
-        cat.id === selectedCategory?.id ? updatedCategory : cat
+        cat.id === editingCategory.id ? updatedCategory : cat
       ));
-      setSelectedCategory(null);
-    } catch (err) {
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Éxito',
+        detail: 'Categoría actualizada correctamente'
+      });
+      loadCategories();
+    } catch (err: any) {
       console.error('Error:', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: err.message || 'Error al actualizar la categoría'
+      });
     }
   };
 
@@ -184,6 +215,33 @@ export default function CategoriesPage() {
     })
     setVisible(true)
   }
+
+  const onSubmit = () => {
+    if (!formData.name.trim()) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'El nombre de la categoría es obligatorio'
+      });
+      return;
+    }
+
+    const categoryData: CategoryFormData = {
+      name: formData.name,
+      color: formData.color,
+      icon: formData.icon,
+      type: formData.type
+    };
+
+    if (editingCategory) {
+      handleEdit(categoryData);
+    } else {
+      handleSubmit(categoryData);
+    }
+    
+    setVisible(false);
+    resetForm();
+  };
 
   const CategoryCard = ({ category }: { category: Category }) => (
     <div 
@@ -308,7 +366,7 @@ export default function CategoriesPage() {
 
         <div className="flex justify-end gap-2 mt-6">
           <Button label="Cancelar" icon="pi pi-times" outlined onClick={() => setVisible(false)} />
-          <Button label="Guardar" icon="pi pi-check" onClick={() => handleSubmit(formData)} />
+          <Button label="Guardar" icon="pi pi-check" onClick={onSubmit} />
         </div>
       </Dialog>
 
