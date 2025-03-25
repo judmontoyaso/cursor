@@ -4,7 +4,7 @@ const nextConfig = {
     domains: ['lh3.googleusercontent.com'],
   },
   experimental: {
-    turbo: false, // Desactiva Turbopack
+    serverActions: true
   },
 };
 
