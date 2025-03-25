@@ -30,9 +30,9 @@ interface Transaction {
   amount: number
   description: string
   date: string
-  type: 'expense' | 'income'
+  type: 'INGRESO' | 'GASTO'
+  categoryId: string
   category: {
-    id: string
     name: string
     color: string
     icon: string
@@ -63,11 +63,11 @@ export default function Home() {
 
   const calculateTotals = (transactions: Transaction[]) => {
     const income = transactions
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === 'INGRESO')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const expenses = transactions
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === 'GASTO')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     return { 
@@ -100,7 +100,7 @@ export default function Home() {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(transaction => {
-      const matchesCategory = !selectedCategory || transaction.category.id === selectedCategory;
+      const matchesCategory = !selectedCategory || transaction.categoryId === selectedCategory;
       const transactionDate = new Date(transaction.date);
       
       let matchesDateRange = true;
@@ -409,7 +409,7 @@ export default function Home() {
                 </div>
               </div>
               <span className={`font-semibold ${
-                transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'
+                transaction.type === 'GASTO' ? 'text-red-600' : 'text-green-600'
               }`}>
                 ${Math.abs(transaction.amount).toFixed(2)}
               </span>

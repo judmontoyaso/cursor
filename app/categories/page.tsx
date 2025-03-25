@@ -85,63 +85,67 @@ export default function CategoriesPage() {
     }
   }
 
-  const handleSubmit = async () => {
-    if (!formData.name || !formData.type) {
-      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Por favor ingrese un nombre y tipo para la categoría' })
-      return
-    }
-
+  const handleSubmit = async (data: CategoryFormData) => {
     try {
-      const url = editingCategory ? `/api/categories` : '/api/categories'
-      const method = editingCategory ? 'PUT' : 'POST'
-      
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingCategory ? { ...formData, id: editingCategory.id } : formData)
-      })
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-      if (!response.ok) throw new Error('Error al guardar la categoría')
-      
-      await loadCategories()
-      setVisible(false)
-      resetForm()
-      toast.current?.show({ 
-        severity: 'success', 
-        summary: 'Éxito', 
-        detail: editingCategory ? 'Categoría actualizada' : 'Categoría creada' 
-      })
-    } catch (error) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Error al guardar la categoría' })
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    try {
-      const response = await fetch(`/api/categories/${id}`, {
-        method: 'DELETE'
-      })
-      
-      const data = await response.json()
-      
       if (!response.ok) {
-        throw new Error(data.error || 'Error al eliminar la categoría')
+        throw new Error('Error al crear la categoría');
       }
-      
-      await loadCategories()
-      toast.current?.show({ 
-        severity: 'success', 
-        summary: 'Éxito', 
-        detail: 'Categoría eliminada correctamente' 
-      })
-    } catch (error: any) {
-      toast.current?.show({ 
-        severity: 'error', 
-        summary: 'Error', 
-        detail: error.message || 'Error al eliminar la categoría' 
-      })
+
+      const newCategory = await response.json();
+      setCategories([...categories, newCategory]);
+      setVisible(false);
+    } catch (err) {
+      console.error('Error:', err);
     }
-  }
+  };
+
+  const handleDelete = async (categoryId: string) => {
+    try {
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar la categoría');
+      }
+
+      setCategories(categories.filter(cat => cat.id !== categoryId));
+    } catch (err) {
+      console.error('Error:', err);
+    }
+  };
+
+  const handleEdit = async (data: CategoryFormData) => {
+    try {
+      const response = await fetch(`/api/categories/${selectedCategory?.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar la categoría');
+      }
+
+      const updatedCategory = await response.json();
+      setCategories(categories.map(cat => 
+        cat.id === selectedCategory?.id ? updatedCategory : cat
+      ));
+      setSelectedCategory(null);
+    } catch (err) {
+      console.error('Error:', err);
+    }
+  };
 
   const confirmDelete = (id: string) => {
     confirmDialog({
@@ -304,7 +308,7 @@ export default function CategoriesPage() {
 
         <div className="flex justify-end gap-2 mt-6">
           <Button label="Cancelar" icon="pi pi-times" outlined onClick={() => setVisible(false)} />
-          <Button label="Guardar" icon="pi pi-check" onClick={handleSubmit} />
+          <Button label="Guardar" icon="pi pi-check" onClick={() => handleSubmit(formData)} />
         </div>
       </Dialog>
 
