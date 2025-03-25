@@ -5,7 +5,10 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
+    "DATABASE_URL": "postgresql://neondb_owner:npg_JQb1mEZ4wBjX@ep-odd-hill-a5dowdks-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require",
     "POSTGRES_PRISMA_URL": "postgresql://neondb_owner:npg_JQb1mEZ4wBjX@ep-odd-hill-a5dowdks-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require",
-    "POSTGRES_URL_NON_POOLING": "postgresql://neondb_owner:npg_JQb1mEZ4wBjX@ep-odd-hill-a5dowdks.us-east-2.aws.neon.tech/neondb?sslmode=require"
+    "POSTGRES_URL_NON_POOLING": "postgresql://neondb_owner:npg_JQb1mEZ4wBjX@ep-odd-hill-a5dowdks.us-east-2.aws.neon.tech/neondb?sslmode=require",
+    "NEXTAUTH_SECRET": "/vkE46itYL2Bax8qpdP8jYDmoF4lOmDGA9GRUxWO7J0=",
+    "NEXTAUTH_URL": "${VERCEL_URL}"
   }
 } 
