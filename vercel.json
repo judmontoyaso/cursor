@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "buildCommand": "prisma generate && prisma migrate deploy && next build",
+  "builds": [
+    {
+      "src": "next.config.js",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "NEXTAUTH_URL": "https://tu-dominio.vercel.app",
+    "PRISMA_GENERATE_DATAPROXY": "true"
+  }
+} 
