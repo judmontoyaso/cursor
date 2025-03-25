@@ -68,10 +68,17 @@ export default function CategoryForm({ onSubmit, initialData }: CategoryFormProp
         <label htmlFor="color" className="font-medium">
           Color
         </label>
-        <ColorPicker
-          value={formData.color}
-          onChange={(e) => setFormData({ ...formData, color: e.value })}
-        />
+        <div>
+          <ColorPicker
+            value={formData.color}
+            onChange={(e) => {
+              const colorValue = typeof e.value === 'string' 
+                ? e.value 
+                : `#${e.value.r.toString(16).padStart(2, '0')}${e.value.g.toString(16).padStart(2, '0')}${e.value.b.toString(16).padStart(2, '0')}`;
+              setFormData({ ...formData, color: colorValue });
+            }}
+          />
+        </div>
       </div>
 
       <div className="flex flex-col space-y-2">
