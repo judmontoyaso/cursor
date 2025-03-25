@@ -72,10 +72,13 @@ export default function CategoryForm({ onSubmit, initialData }: CategoryFormProp
           <ColorPicker
             value={formData.color}
             onChange={(e) => {
-              const colorValue = typeof e.value === 'string' 
-                ? e.value 
-                : `#${e.value.r.toString(16).padStart(2, '0')}${e.value.g.toString(16).padStart(2, '0')}${e.value.b.toString(16).padStart(2, '0')}`;
-              setFormData({ ...formData, color: colorValue });
+              if (typeof e.value === 'string') {
+                setFormData({ ...formData, color: e.value });
+              } else if ('r' in e.value && 'g' in e.value && 'b' in e.value) {
+                const rgb = e.value;
+                const colorValue = `#${rgb.r.toString(16).padStart(2, '0')}${rgb.g.toString(16).padStart(2, '0')}${rgb.b.toString(16).padStart(2, '0')}`;
+                setFormData({ ...formData, color: colorValue });
+              }
             }}
           />
         </div>

@@ -25,8 +25,10 @@ interface Transaction {
     type: 'INGRESO' | 'GASTO';
     categoryId: string;
     category: {
+        id: string;
         name: string;
         color: string;
+        icon: string;
     };
 }
 
