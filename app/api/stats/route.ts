@@ -1,22 +1,36 @@
-import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]/route'
-import { getMonthlyStats } from '@/lib/db'
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { authOptions } from '../auth/[...nextauth]/auth.config'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const stats = await getMonthlyStats(session.user.id)
-    return NextResponse.json(stats)
+    const transactions = await prisma.transaction.findMany({
+      where: { userId: session.user.id },
+      include: { category: true }
+    })
+
+    const totalIngresos = transactions
+      .filter(t => t.type === 'INGRESO')
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    const totalGastos = transactions
+      .filter(t => t.type === 'GASTO')
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    const balance = totalIngresos - totalGastos
+
+    return NextResponse.json({
+      totalIngresos,
+      totalGastos,
+      balance
+    })
   } catch (error) {
-    console.error('Error al obtener estadísticas:', error)
-    return NextResponse.json(
-      { error: 'Error al obtener las estadísticas' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error al obtener las estadísticas' }, { status: 500 })
   }
 } 

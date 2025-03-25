@@ -63,7 +63,7 @@ export default function Sidebar() {
                                 icon={item.icon}
                                 tooltip={item.label}
                                 tooltipOptions={{ position: 'right' }}
-                                onClick={item.command}
+                                onClick={() => item.command && item.command(null as any)}
                                 rounded
                                 text
                                 className="w-8 h-8"

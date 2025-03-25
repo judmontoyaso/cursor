@@ -1,20 +1,41 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../../auth/[...nextauth]/auth.config'
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request, { params }) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+
     const data = await request.json()
-    
-    const transaction = await prisma.transaction.update({
-      where: {
-        id: params.id
-      },
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!transaction) {
+      return NextResponse.json({ error: 'Transacción no encontrada' }, { status: 404 })
+    }
+
+    if (transaction.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: params.id },
       data: {
+        amount: data.amount,
         description: data.description,
-        amount: data.type === 'expense' ? -Math.abs(data.amount) : Math.abs(data.amount),
         date: new Date(data.date),
         categoryId: data.categoryId,
         type: data.type
@@ -24,33 +45,47 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json(transaction)
+    return NextResponse.json(updatedTransaction)
   } catch (error) {
-    console.error('Error al actualizar la transacción:', error)
-    return NextResponse.json(
-      { error: 'Error al actualizar la transacción' },
-      { status: 500 }
-    )
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Error al actualizar la transacción' }, { status: 500 })
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request, { params }) {
   try {
-    await prisma.transaction.delete({
-      where: {
-        id: params.id
-      }
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
     })
 
-    return NextResponse.json({ message: 'Transacción eliminada correctamente' })
+    if (!user) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!transaction) {
+      return NextResponse.json({ error: 'Transacción no encontrada' }, { status: 404 })
+    }
+
+    if (transaction.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    await prisma.transaction.delete({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ message: 'Transacción eliminada exitosamente' })
   } catch (error) {
-    console.error('Error al eliminar la transacción:', error)
-    return NextResponse.json(
-      { error: 'Error al eliminar la transacción' },
-      { status: 500 }
-    )
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Error al eliminar la transacción' }, { status: 500 })
   }
 } 
