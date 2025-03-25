@@ -1,14 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "prisma generate && prisma migrate deploy && next build",
-  "builds": [
-    {
-      "src": "next.config.js",
-      "use": "@vercel/next"
-    }
-  ],
+  "buildCommand": "prisma generate && next build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
   "env": {
-    "NEXTAUTH_URL": "https://tu-dominio.vercel.app",
-    "PRISMA_GENERATE_DATAPROXY": "true"
+    "POSTGRES_PRISMA_URL": "postgresql://neondb_owner:npg_JQb1mEZ4wBjX@ep-odd-hill-a5dowdks-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require",
+    "POSTGRES_URL_NON_POOLING": "postgresql://neondb_owner:npg_JQb1mEZ4wBjX@ep-odd-hill-a5dowdks.us-east-2.aws.neon.tech/neondb?sslmode=require"
   }
 } 
