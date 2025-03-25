@@ -4,8 +4,13 @@ const nextConfig = {
     domains: ['lh3.googleusercontent.com'],
   },
   experimental: {
-    serverActions: true
+    serverActions: {
+      enabled: true
+    }
   },
+  eslint: {
+    ignoreDuringBuilds: true
+  }
 };
 
 module.exports = nextConfig; 

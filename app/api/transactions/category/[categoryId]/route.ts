@@ -1,40 +1,39 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../../../auth/[...nextauth]/auth.config'
 
-export async function GET(
-  request: Request,
-  { params }: { params: { categoryId: string } }
-) {
+export async function GET(request, { params }) {
   try {
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        categoryId: params.categoryId,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-      include: {
-        category: true, // Incluimos la información de la categoría
-      },
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
     })
 
-    // Formatear las transacciones para la respuesta
-    const formattedTransactions = transactions.map(transaction => ({
-      id: transaction.id,
-      description: transaction.description,
-      amount: transaction.amount,
-      date: transaction.date,
-      categoryName: transaction.category.name,
-      categoryColor: transaction.category.color,
-      categoryIcon: transaction.category.icon,
-    }))
-    
-    return NextResponse.json(formattedTransactions)
+    if (!user) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId: user.id,
+        categoryId: params.categoryId
+      },
+      include: {
+        category: true
+      },
+      orderBy: {
+        date: 'desc'
+      }
+    })
+
+    return NextResponse.json(transactions)
   } catch (error) {
-    console.error('Error al cargar las transacciones:', error)
-    return NextResponse.json(
-      { error: 'Error al cargar las transacciones' },
-      { status: 500 }
-    )
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Error al obtener las transacciones' }, { status: 500 })
   }
 } 

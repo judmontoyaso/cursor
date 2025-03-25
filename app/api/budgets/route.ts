@@ -1,27 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '../auth/[...nextauth]/auth.config';
 
 export async function POST(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
+        console.log('Session:', session); // Debug
+
         if (!session?.user?.email) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
 
-        const data = await req.json();
         const user = await prisma.user.findUnique({
             where: { email: session.user.email }
         });
+        console.log('User found:', user); // Debug
 
         if (!user) {
             return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
         }
 
-        // Validar datos requeridos
+        const data = await req.json();
+        console.log('Data received:', data); // Debug
+
+        // Validar que todos los campos necesarios estén presentes
         if (!data.name || !data.amount || !data.type || !data.categoryId || !data.startDate) {
-            return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Faltan campos requeridos' },
+                { status: 400 }
+            );
         }
 
         // Crear el presupuesto
@@ -101,6 +109,6 @@ export async function GET() {
         return NextResponse.json(budgetsWithProgress);
     } catch (error) {
         console.error('Error:', error);
-        return NextResponse.json({ error: 'Error al obtener presupuestos' }, { status: 500 });
+        return NextResponse.json({ error: 'Error al obtener los presupuestos' }, { status: 500 });
     }
 }

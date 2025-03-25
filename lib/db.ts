@@ -1,5 +1,8 @@
 import prisma from './prisma'
 
+// Definir el tipo de transacción
+type TransactionType = 'INCOME' | 'EXPENSE'
+
 export async function getTransactions(userId?: string) {
   try {
     console.log('Obteniendo transacciones...')
@@ -24,7 +27,7 @@ export async function createTransaction(data: {
   date: Date
   amount: number
   description: string
-  type: 'INCOME' | 'EXPENSE'
+  type: TransactionType
   categoryId: string
   userId?: string
 }) {
@@ -146,21 +149,35 @@ export async function getMonthlyStats(userId?: string) {
 }
 
 export async function getExpensesByCategory() {
-  return prisma.transaction.groupBy({
-    by: ['categoryId'],
+  // Versión alternativa que utiliza un enfoque diferente para obtener gastos por categoría
+  // Esto evita el error de tipos con groupBy e include juntos
+  const expenses = await prisma.transaction.findMany({
     where: {
       type: 'EXPENSE',
       date: {
         gte: new Date(new Date().setMonth(new Date().getMonth() - 6))
       }
     },
-    _sum: {
-      amount: true
-    },
     include: {
       category: true
     }
-  })
+  });
+
+  // Agrupar manualmente por categoría
+  const expensesByCategory = expenses.reduce((acc, expense) => {
+    const categoryId = expense.categoryId;
+    if (!acc[categoryId]) {
+      acc[categoryId] = {
+        categoryId,
+        _sum: { amount: 0 },
+        category: expense.category
+      };
+    }
+    acc[categoryId]._sum.amount += expense.amount;
+    return acc;
+  }, {});
+
+  return Object.values(expensesByCategory);
 }
 
 export async function updateTransaction(data: {
@@ -168,7 +185,7 @@ export async function updateTransaction(data: {
   date: Date
   amount: number
   description: string
-  type: 'INCOME' | 'EXPENSE'
+  type: TransactionType
   categoryId: string
   userId: string
 }) {
