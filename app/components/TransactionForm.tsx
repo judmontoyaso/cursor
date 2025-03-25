@@ -15,7 +15,7 @@ interface Category {
   type: 'INGRESO' | 'GASTO'
 }
 
-interface TransactionFormData {
+export interface TransactionFormData {
   description: string
   amount: number
   date: Date

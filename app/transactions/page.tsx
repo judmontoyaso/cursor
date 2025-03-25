@@ -13,6 +13,7 @@ import { Calendar } from 'primereact/calendar'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { Card } from 'primereact/card'
 import TransactionForm from '../components/TransactionForm'
+import type { TransactionFormData } from '../components/TransactionForm'
 
 interface Transaction {
   id: string
@@ -43,7 +44,7 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionFormData | null>(null)
   const toast = useRef<Toast>(null)
 
   useEffect(() => {
@@ -75,14 +76,20 @@ export default function TransactionsPage() {
     }
   }
 
-  const handleSubmit = async (data: Omit<Transaction, 'id'>) => {
+  const handleSubmit = async (formData: TransactionFormData) => {
     try {
       const response = await fetch('/api/transactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          description: formData.description,
+          amount: formData.amount,
+          date: formData.date.toISOString(),
+          type: formData.type,
+          categoryId: formData.categoryId
+        }),
       })
 
       if (!response.ok) {
